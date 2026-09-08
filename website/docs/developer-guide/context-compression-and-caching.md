@@ -284,7 +284,7 @@ Hermes' local transcript is never rewritten on this runtime — state.db records
 the compaction boundary while the visible transcript stays intact. All other
 routes (including Codex OAuth chat sessions) keep Hermes' summary compressor.
 
-### Native Responses compaction (gpt-5.6 on direct OpenAI / Codex subscription)
+### Native Responses compaction (gpt-5.6 and GPT-6 Astra on direct OpenAI / Codex subscription)
 
 OpenAI's Responses API supports server-side compaction: when a request includes
 `context_management: [{type: "compaction", compact_threshold: N}]` and the
@@ -298,9 +298,11 @@ client-side summary pass, and ZDR-friendly (`store: false`, no
 Opt in with `compression.codex_responses_native: true`. The gate is deliberately
 narrow, re-checked on every request:
 
-- **Models:** the gpt-5.6 family only. Other models fail server-side when the
-  field is present (gpt-5.1/5.2 return HTTP 500 or stall the stream — there is
-  no structured rejection to downgrade on, verified live Aug 2026).
+- **Models:** the gpt-5.6 family and the exact `gpt-6-astra` model ID. Astra
+  supports compaction in the [OpenAI model guide](https://developers.openai.com/api/docs/guides/latest-model).
+  Other models remain excluded: gpt-5.1/5.2 returned HTTP 500 or stalled the
+  stream with the field present (no structured rejection to downgrade on,
+  verified live Aug 2026). Undocumented Astra variants are not implicitly enabled.
 - **Routes:** `api.openai.com` (OpenAI API key) or the ChatGPT Codex backend
   (Codex subscription OAuth) only. xAI, GitHub/Copilot, OpenRouter, relays, and
   local servers never see the field.
@@ -320,6 +322,10 @@ threshold such as 200,000. Invalid values select automatic behavior. If no
 usable local trigger exists, automatic mode uses 200,000. The provider minimum
 is 1,024 tokens, so an unusually small local trigger at or below that floor
 cannot preserve strict native first ordering.
+
+The bounded synthetic `evals/compaction/native_probe.py` probe verifies native
+checkpoint emission/replay and constraint retention without running agent tools.
+See `evals/compaction/README.md` for explicit live usage and evidence limits.
 
 ### Computed Values (for a 200K context model at defaults)
 

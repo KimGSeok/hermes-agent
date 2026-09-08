@@ -1,8 +1,8 @@
-"""Native OpenAI Responses server-side compaction — gpt-5.6 on direct OpenAI routes only.
+"""Native OpenAI Responses server-side compaction on supported OpenAI routes.
 
 ``context_management=[{"type": "compaction", "compact_threshold": N}]`` makes the server
 summarize older context into an opaque ``compaction`` item once the input crosses N tokens.
-Deliberately narrow (live-verified): gpt-5.6 only (5.1/5.2 fail server-side with no
+Deliberately narrow: gpt-5.6 and GPT-6 Astra (5.1/5.2 fail server-side with no
 structured rejection) on api.openai.com or the ChatGPT Codex backend. The local compressor
 stays armed as fallback (native threshold clamped below the local trigger); compaction items
 ride the ``codex_reasoning_items`` sidecar. No transport imports (shared gate, no cycles).
@@ -28,8 +28,9 @@ _ELIGIBLE_MODEL_MARKER = "gpt-5.6"
 
 
 def is_native_compaction_model(model: Optional[str]) -> bool:
-    """True when the model is in the gpt-5.6 family."""
-    return _ELIGIBLE_MODEL_MARKER in (model or "").lower()
+    """Keep the verified 5.6 family and explicitly supported Astra slug eligible."""
+    normalized = (model or "").lower()
+    return _ELIGIBLE_MODEL_MARKER in normalized or normalized == "gpt-6-astra"
 
 
 def resolve_native_compaction_capabilities(

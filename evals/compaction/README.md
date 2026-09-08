@@ -69,6 +69,40 @@ kwargs plus optional attribute overrides applied post-construction (e.g.
 `tail_token_budget`). Add new policies there — the runner picks them up by
 name.
 
+## Native Responses continuity probe
+
+For the separate native-compaction route, use a synthetic two-request probe:
+
+```bash
+python -m evals.compaction.native_probe --live --model gpt-6-astra \
+    --provider openai --seed 0 --out /path/to/new-report.json
+```
+
+`--live` explicitly opts into provider token usage. `OPENAI_API_KEY` must already
+be supplied through the environment; the probe never reads or refreshes profile
+credentials. `--provider openai-codex` selects the official Codex endpoint when
+the environment holds the corresponding access token. No arbitrary endpoints,
+agent tools, operational data, or user transcripts are used.
+
+The probe uses Hermes' native eligibility gate, Responses transport, stream
+assembler, and checkpoint sidecar. It checks an early user constraint, a later
+constraint change, and an assistant-authored fact that must be recovered after
+its plaintext is pruned. PASS requires an observed compaction item, its replay,
+completed provider responses for the requested model, and an exact typed JSON
+answer. No checkpoint, missing terminal frames, incomplete responses, model
+substitution, invalid answers, and errors cannot pass.
+
+Reports contain source/fixture digests, request settings, response model/status,
+usage (null when unavailable), timings, and outcomes. Raw transcripts, access
+tokens, opaque state, and exception bodies are not written. Existing report
+files are never overwritten. At most two requests are sent, with SDK retries
+disabled and a 60-second HTTP timeout; this is not a hard end-to-end deadline.
+
+This is a provider/adapter integration smoke test, **not** a full-agent benchmark,
+an A/B quality comparison, or proof of broad long-horizon reliability. Changing
+the seed produces a synthetic variation, not an independent human-labeled
+holdout. The normal CLI/gateway opt-in and local-compression fallback are unchanged.
+
 ## Notes
 
 - Question generation and judging use `agent.auxiliary_client.call_llm`
